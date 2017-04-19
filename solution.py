@@ -9,7 +9,6 @@ def assign_value(values, box, value):
     # Don't waste memory appending actions that don't actually change any values
     if values[box] == value:
         return values
-
     values[box] = value
     if len(value) == 1:
         assignments.append(values.copy())
@@ -23,16 +22,17 @@ def naked_twins(values):
     Returns:
         the values dictionary with the naked twins eliminated from peers.
     """
-
-    # Find all instances of naked twins
-    twins = [(b1, b2) for b1 in values.keys() for b2 in peers[b1] \
-                        if len(values[b1]) == 2 and values[b1] == values[b2]]
-    # Eliminate the naked twins as possibilities for their peers
-    for pair in twins:
-        targets = list(set(peers[pair[0]]) & set(peers[pair[1]]))
-        for peer in targets:
-            for i in range(2):
-                assign_value(values, peer, values[peer].replace(values[pair[0]][i],''))
+    for unit in unitlist:
+    	# Find all instances of naked twins for each unit
+    	# twins is a list of ordered tuples and each tuple represents a pair of naked twins
+    	twins = [(b1, b2) for b1 in unit for b2 in unit if len(values[b1]) == 2 and values[b1] == values[b2] and b1 > b2]
+    	for pair in twins:
+    		digits = values[pair[0]]  ## value of a naked twin pair
+    		# Eliminate the naked twins as possibilities for their peers
+    		for box in unit:
+    			if box not in pair:   ## if not naked twins
+    				for digit in digits: ## elminate naked twins' values from peers in the same unit
+    					assign_value(values, box, values[box].replace(digit,''))
     return values
 
 def cross(A, B):
@@ -121,12 +121,11 @@ def reduce_puzzle(values):
     Input: A sudoku in dictionary form.
     Output: The resulting sudoku in dictionary form.
     """
-    solved_values = [box for box in values.keys() if len(values[box]) == 1]
     stalled = False
     while not stalled:
         solved_values_before = len([box for box in values.keys() if len(values[box]) == 1])
         values = eliminate(values)
-        values = naked_twins(values)
+        values = naked_twins(values) ## naked_twins strategy is added here
         values = only_choice(values)
         solved_values_after = len([box for box in values.keys() if len(values[box]) == 1])
         stalled = solved_values_before == solved_values_after
@@ -144,10 +143,11 @@ def search(values):
         return values ## Solved!
     # Choose one of the unfilled squares with the fewest possibilities
     n,s = min((len(values[s]), s) for s in boxes if len(values[s]) > 1)
-    # Now use recurrence to solve each one of the resulting sudokus, and 
+    # Now use recursion to solve each one of the resulting sudokus, 
+    # and if one returns a value (not False), return that answer!
     for value in values[s]:
         new_sudoku = values.copy()
-        new_sudoku[s] = value
+        assign_value(new_sudoku, s, value)
         attempt = search(new_sudoku)
         if attempt:
             return attempt
@@ -170,7 +170,6 @@ if __name__ == '__main__':
     try:
         from visualize import visualize_assignments
         visualize_assignments(assignments)
-
     except SystemExit:
         pass
     except:
